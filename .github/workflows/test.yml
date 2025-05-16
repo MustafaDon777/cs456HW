@@ -1,22 +1,45 @@
-name: Test
+name: CI for Django App
+
 on:
-    push:
-        branches: [main]
-    pull_request:
-        branches: [main]
+  push:
+    branches: [main, testing]
+  pull_request:
+    branches: [main, testing]
 
 jobs:
-  build:
+  run-tests:
     runs-on: ubuntu-latest
+
     steps:
-      - run: echo "🎉 The job was automatically triggered by a ${{ github.event_name }} event."
-      - run: echo "🐧 This job is now running on a ${{ runner.os }} server hosted by GitHub!"
-      - run: echo "🔎 The name of your branch is ${{ github.ref }} and your repository is ${{ github.repository }}."
-      - name: Check out repository code
+      - name: Get Code
         uses: actions/checkout@v4
-      - run: echo "💡 The ${{ github.repository }} repository has been cloned to the runner."
-      - run: echo "🖥️ The workflow is now ready to test your code on the runner."
-      - name: List files in the repository
+
+      - name: Setup Python Environment
+        uses: actions/setup-python@v4
+        with:
+          python-version: "3.12"
+
+      - name: Install Python Packages
         run: |
-          ls ${{ github.workspace }}
-      - run: echo "🍏 This job's status is ${{ job.status }}."
+          pip install --upgrade pip
+          pip install -r requirements.txt
+          pip install playwright
+          playwright install
+
+      - name: Apply Database Migrations
+        working-directory: ./ledgerpay
+        run: python manage.py migrate
+
+      - name: Execute Tests with Coverage
+        working-directory: ./ledgerpay
+        run: |
+          python manage.py runserver &
+          sleep 7
+          pytest --cov=payments --cov-report=xml
+
+      - name: Submit Coverage to Codecov
+        uses: codecov/codecov-action@v4
+        with:
+          file: ./coverage.xml
+          flags: tests
+          name: django-ci-report

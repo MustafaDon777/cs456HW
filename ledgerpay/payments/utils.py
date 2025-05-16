@@ -1,6 +1,13 @@
 from solana.rpc.api import Client, Signature
 from solders.solders import TransactionConfirmationStatus
 import base58
+from decimal import Decimal
+
+def can_transfer(balance: Decimal, amount: Decimal) -> bool:
+    """
+    Returns True if balance is enough and amount is positive.
+    """
+    return balance >= amount and amount > 0
 
 def check_transaction_status(transaction_signature):
     http_client = Client("https://api.devnet.solana.com")
